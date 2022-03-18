@@ -1,4 +1,5 @@
 const mongooseErrorHandler = require('mongoose-error-handler');
+const mongoose = require('mongoose');
 const Exercise = require('../schemas/Exercise');
 const User = require('../schemas/User');
 
@@ -42,15 +43,28 @@ const getLogs = async (req, res) => {
   try {
     const userId = req.params.userId
 
+    if( !mongoose.Types.ObjectId.isValid(userId) ){
+      res.status(404).json({
+        message: `User id ${userId} is not correct`
+      })
+
+      return
+    }
+
     const user = await User.findOne({ _id: userId })
     
     if (!user) {
-      res.status(400).json({
+      res.status(404).json({
         message: 'User not found'
       })
 
       return 
     }
+
+    const logsCount = await Exercise.count({
+      userId,
+      ...getDateFilter(from, to)
+    })
 
     const exercises = await Exercise.find({
       userId,
@@ -60,7 +74,7 @@ const getLogs = async (req, res) => {
 
     res.status(200).json({
       username: user.username,
-      count: exercises.length,
+      count: logsCount,
       _id: userId,
       log: prepareLogs(exercises)
     })
